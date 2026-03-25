@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Achados_e_Perdidos": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
