@@ -1,6 +1,5 @@
 # Achados_e_Perdidos
 # 📦 Achados e Perdidos - Relatório em PDF
-# 📦 Achados e Perdidos - Relatório em PDF
 
 Aplicação em C# que consulta dados do AppSheet e gera relatórios em PDF com imagens dos itens perdidos.
 
