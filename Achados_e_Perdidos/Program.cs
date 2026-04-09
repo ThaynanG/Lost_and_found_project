@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System.Net.Http;
 using System.Linq;
 using System.Text;
@@ -11,10 +11,10 @@ using System.Collections.Generic;
 var client = new HttpClient();
 
 // API KEY
-client.DefaultRequestHeaders.Add("ApplicationAccessKey", "V2-8RRaL-xVII8-Ooq7Q-ZOmhI-h9dra-Wfceg-TxLVy-XkS1O");
+client.DefaultRequestHeaders.Add("ApplicationAccessKey", "API");
 
 // SUA URL
-var url = "https://www.appsheet.com/api/v2/apps/c1da97fa-952d-4a5b-b534-f5aac6054f87/tables/Pagina1/Action";
+var url = "URL";
 
 var body = @"{
     ""Action"": ""Find"",
@@ -55,7 +55,6 @@ var grupos = itensPerdidos
 
 
 
-Console.WriteLine(result);
 Console.WriteLine($"Total itens: {itens.Count}");
 Console.WriteLine($"Não entregues: {itensPerdidos.Count}");
 Console.WriteLine("Status: " + response.StatusCode);
@@ -79,68 +78,74 @@ foreach (var grupo in grupos)
     var pdf = new PdfDocument(writer);
     var document = new Document(pdf);
 
-    // TÍTULO
-    var titulo = new Paragraph($"RELATÓRIO - {grupo.Key}");
+    var titulo = new Paragraph($"Lost & Found - {grupo.Key}");
     titulo.SetFontSize(18);
     document.Add(titulo);
 
     document.Add(new Paragraph(" "));
 
-    // TABELA (GRID DE IMAGENS)
-    var table = new Table(3); // 3 imagens por linha
-
-
-
-
+    var table = new Table(3);
 
     foreach (var item in grupo)
     {
         try
         {
-            var urlImagem = $"https://www.appsheet.com/template/gettablefileurl?appName=AchadosePerdidosRedHouse-716952994-26-03-23&tableName=Pagina1&fileName={item.Foto}";
+            if (string.IsNullOrWhiteSpace(item.FotoUrl) || !item.FotoUrl.StartsWith("{"))
+                throw new Exception("Formato inválido");
 
-            var bytes = await client.GetByteArrayAsync(item.FotoUrl);
+            var fotoObj = JsonConvert.DeserializeObject<FotoObjeto>(item.FotoUrl);
+
+            if (fotoObj == null || string.IsNullOrWhiteSpace(fotoObj.Url))
+                throw new Exception("URL inválida");
+
+            var responseImg = await client.GetAsync(fotoObj.Url);
+
+            if (!responseImg.IsSuccessStatusCode)
+                throw new Exception("Erro ao baixar");
+
+            var bytes = await responseImg.Content.ReadAsByteArrayAsync();
 
             var imageData = iText.IO.Image.ImageDataFactory.Create(bytes);
             var image = new Image(imageData);
 
             image.SetWidth(150);
             image.SetHeight(150);
-            image.SetAutoScale(true);
 
             var cell = new Cell().Add(image);
             cell.SetBorder(iText.Layout.Borders.Border.NO_BORDER);
 
             table.AddCell(cell);
         }
-        catch
+        catch (Exception ex)
         {
-            var cell = new Cell().Add(new Paragraph("Sem imagem"));
+            Console.WriteLine($"Erro imagem: {ex.Message}");
+
+            var cell = new Cell().Add(new Paragraph("Imagem inválida"));
             cell.SetBorder(iText.Layout.Borders.Border.NO_BORDER);
+
             table.AddCell(cell);
         }
     }
 
+    // ✅ AGORA SIM (fora do loop)
     document.Add(table);
     document.Close();
 
-
-
-
-
-
-
-
+    Console.WriteLine($"PDF gerado: {caminho}");
 }
+
+  
+
 
 // CLASSE DOS DADOS
 class Item
+
 {
-    [JsonProperty("FOTO_URL")]
+    [JsonProperty("FOTO URL")]
     public string FotoUrl { get; set; }
 
     [JsonProperty("NOME DO ITEM")]
-    public string NomeItem { get; set; }
+    public string NomeItem { get; set; }        
 
     [JsonProperty("CATEGORIA")]
     public string Categoria { get; set; }
@@ -164,3 +169,8 @@ class Item
     public string PessoaRetirou { get; set; }
 }
 
+class FotoObjeto
+{
+    public string Url { get; set; }
+    public string LinkText { get; set; }
+}
